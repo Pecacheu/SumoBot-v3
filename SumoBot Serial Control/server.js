@@ -4,13 +4,13 @@ socketio = require('socket.io'),
 url = require("url"),
 chalk = require('chalk'),
 SerialObject = require("serialport");
-//try { var open = require('open'); } catch(e) { console.log(chalk.dim("NodeOpen not installed, browser will not auto-open.")); console.log(); }
+try { var open = require('open'); } catch(e) { console.log(chalk.dim("NodeOpen not installed, browser will not auto-open.")); console.log(); }
 
 var debug = false;
 var socketServer;
 var serialPort;
 var portName = ""; //'/dev/cu.usbserial-A700dEnx'
-var endChar = '\n'; //If specified, program waits for this character before sending update strings.
+var endChar = ''; //If specified, program waits for this character before sending update strings.
 
 function begin(route, handle) {
 	selectPort(function() { startServer(route, handle); });
