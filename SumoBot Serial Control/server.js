@@ -88,6 +88,7 @@ function initSocketIO(httpServer) {
 		socket.emit('onconnection', "");
 		socketServer.on('update', function(newData) {
 			// receives interally transmitted data.
+			socket.emit('updateData', newData);
 		});
 		// send data to Arduino serial:
 		socket.on('movementKeyDown', function(keyRaw) {
@@ -113,6 +114,7 @@ function initSocketIO(httpServer) {
 			} else if(key[4] == 39) {
 				serialPort.write('a' + 'R'); //Arrow Key Off, Right
 			}
+		});
 	});
 }
 

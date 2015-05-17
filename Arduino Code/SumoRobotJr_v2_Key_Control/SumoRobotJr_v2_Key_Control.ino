@@ -63,9 +63,29 @@ void setup() {
 }
 
 void loop() {
-  int count = 1;
-  boolean dir = true;
+  char cmd; char data;
   while(1) {
+    //Read New Commands From Serial:
+    if(Serial.available()) {
+      while(Serial.available() > 0) {
+        cmd = ''; data = '';
+        char newChar = Serial.read();
+        if(cmd) { data = newChar; break; }
+        else { cmd = newChar; }
+      }
+    }
+    
+    //Run Next Command:
+    if(cmd == 'A') { //Key On Event:
+      if(data == 'U') driveMotor(1, true, 128, true); //Up Key
+      else if(data == 'D') driveMotor(1, true, 128, true); //Down Key
+      else if(data == 'L') driveMotor(1, true, 128, true); //Left Key
+      else if(data == 'R') driveMotor(1, true, 128, true); //Right Key
+    } else if(cmd == 'a') { //Key Off Event:
+      
+    }
+    
+    
     stepMotor(count%2==0 ? 1 : 2, 10, dir);
     digitalWrite(STATUS_LED, HIGH); delay(50);
     digitalWrite(STATUS_LED,  LOW); delay(50);
