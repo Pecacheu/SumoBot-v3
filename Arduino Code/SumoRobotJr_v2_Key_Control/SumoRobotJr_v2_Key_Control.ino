@@ -63,12 +63,11 @@ void setup() {
 }
 
 void loop() {
-  char cmd; char data;
+  unsigned char cmd = 0; unsigned char data = 0;
   while(1) {
     //Read New Commands From Serial:
     if(Serial.available()) {
       while(Serial.available() > 0) {
-        cmd = ''; data = '';
         char newChar = Serial.read();
         if(cmd) { data = newChar; break; }
         else { cmd = newChar; }
@@ -76,19 +75,25 @@ void loop() {
     }
     
     //Run Next Command:
-    if(cmd == 'A') { //Key On Event:
-      if(data == 'U') driveMotor(1, true, 128, true); //Up Key
-      else if(data == 'D') driveMotor(1, true, 128, true); //Down Key
-      else if(data == 'L') driveMotor(1, true, 128, true); //Left Key
-      else if(data == 'R') driveMotor(1, true, 128, true); //Right Key
-    } else if(cmd == 'a') { //Key Off Event:
-      
+    if(cmd && data) {
+      if(cmd == 'A') { //Key On Event:
+        Serial.print("ON RECV: "); Serial.println(data);
+             if(data == 'U') { driveMotor(1, true, 128, false); driveMotor(2, true, 128, true);  } //Up Key
+        else if(data == 'D') { driveMotor(1, true, 128, true);  driveMotor(2, true, 128, false); } //Down Key
+        //else if(data == 'L') { driveMotor(1, true, 128, true);  driveMotor(2, true, 128, true);  } //Left Key
+        //else if(data == 'R') { driveMotor(1, true, 128, true);  driveMotor(2, true, 128, true);  } //Right Key
+      } else if(cmd == 'a' && data) { //Key Off Event:
+        Serial.print("OFF RECV: "); Serial.println(data);
+             if(data == 'U') { driveMotor(1, false, 1, false); driveMotor(2, false, 1, false); } //Up Key
+        else if(data == 'D') { driveMotor(1, false, 1, false); driveMotor(2, false, 1, false); } //Down Key
+        //else if(data == 'L') { driveMotor(1, false, 1, false); driveMotor(2, false, 1, false); } //Left Key
+        //else if(data == 'R') { driveMotor(1, false, 1, false); driveMotor(2, false, 1, false); } //Right Key
+      }
+      cmd = 0; data = 0;
     }
     
-    
-    stepMotor(count%2==0 ? 1 : 2, 10, dir);
-    digitalWrite(STATUS_LED, HIGH); delay(50);
-    digitalWrite(STATUS_LED,  LOW); delay(50);
+    //digitalWrite(STATUS_LED, HIGH); delay(50);
+    //digitalWrite(STATUS_LED,  LOW); delay(50);
     
 //    driveMotor(1, true, 255, dir);
 //    driveMotor(2, true, 255, dir);
@@ -99,7 +104,7 @@ void loop() {
 //    driveMotor(1, false, 1, dir);
 //    driveMotor(2, false, 1, dir);
     
-    delay(500);
+    /*delay(500);
     
     if(count >= 10) {
       dir = !dir;
@@ -111,7 +116,7 @@ void loop() {
       engageMotor(2);
       delay(500);
     }
-    count++;
+    count++;*/
   }
 }
 
