@@ -1,2 +1,2 @@
 # Electronics-201-Resources
-Links, programms, and code for our E201 class!
+Links, programs, and code for our E201 class!
