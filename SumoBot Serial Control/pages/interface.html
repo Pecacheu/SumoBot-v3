@@ -1,0 +1,59 @@
+<!DOCTYPE HTML>
+<html><head>
+		<title>SumoBot Control Interface</title>
+		<script src="/socket.io/socket.io.js"></script>
+		<style>
+		#msgList {
+			border-color:#F1E31D;
+			border-style:outset;
+			border-width:medium;
+			border-radius:10px;
+			font-family:"Lucida Grande", "Lucida Sans Unicode", "Lucida Sans", "DejaVu Sans", Verdana, sans-serif;
+			font-size:18px;
+		}
+		</style>
+	</head>
+	<body bgcolor="#714300">
+		<script>
+		var iosocket;
+		
+		function keyDown(keyEvent) {
+			document.body.bgColor = "#000000";
+			document.getElementById("msgList").style.color = "#FFFFFF";
+			var key = {};
+			key[0] = keyEvent.shiftKey; key[1] = keyEvent.altKey;
+			key[2] = keyEvent.ctrlKey; key[3] = keyEvent.metaKey;
+			key[4] = keyEvent.keyCode;
+			iosocket.emit('movementKeyDown', JSON.stringify(key));
+		}
+		
+		function keyUp(keyEvent) {
+			document.body.bgColor = "#714300";
+			document.getElementById("msgList").style.color = "#000000";
+			var key = {};
+			key[0] = keyEvent.shiftKey; key[1] = keyEvent.altKey;
+			key[2] = keyEvent.ctrlKey; key[3] = keyEvent.metaKey;
+			key[4] = keyEvent.keyCode;
+			iosocket.emit('movementKeyUp', JSON.stringify(key));
+		}
+		
+		function initSocket() {
+			iosocket = io.connect();
+			//Wait for connection message:
+			iosocket.on('onconnection', function(initData) {
+				//Get ready to recieve other messages from the server:
+				iosocket.on('updateData', function (data) {
+					document.getElementById("msgList").innerHTML += ("\n<br>"+data);
+				});
+				//Get ready to send messages too:
+				document.onkeydown = keyDown; document.onkeyup = keyUp;
+	    	});
+		}
+		
+		window.onload = initSocket;
+		</script>
+		<div align="center" id="msgList">
+		Recieved Messages:
+		</div>
+	</body>
+</html>
