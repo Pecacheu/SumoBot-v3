@@ -31,6 +31,7 @@ function selectPort(completionFunc) {
 		// wait for user input:
 		function onPortSelectInput(newPort) {
 			if(newPort.search('\n') != -1) newPort = newPort.substring(0, newPort.search('\n'));
+			if(newPort.search('\r') != -1) newPort = newPort.substring(0, newPort.search('\r'));
 			var portExists = false;
 			for(var i=0; i < ports.length; i++) if(newPort == ports[i].comName) { portExists = true; break; }
 			if(portExists) {
@@ -45,6 +46,7 @@ function selectPort(completionFunc) {
 		process.stdin.setEncoding('utf8');
 		process.stdin.on('data', function(text) {
 			if(text.search('\n') != -1) text = text.substring(0, text.search('\n'));
+			if(text.search('\r') != -1) text = text.substring(0, text.search('\r'));
 			if(text == "exit" || text == "quit") {
 				console.log(chalk.magenta("Exiting..."));
 				process.exit();
@@ -134,12 +136,12 @@ function serialListener() {
 		// Listens to incoming data
 		serialPort.on('data', function(data) {
 			receivedData += data.toString();
-			if(!endChar || receivedData[receivedData.length-1] == endChar) {
-				if(endChar) receivedData = receivedData.slice(0, -1);
+			//if(!endChar || receivedData[receivedData.length-1] == endChar) {
+				//if(endChar) receivedData = receivedData.slice(0, -1);
 				// send the incoming data to browser with websockets.
 				socketServer.emit('update', receivedData); // transmit data interally to initSocketIO function.
 				receivedData = '';
-			}
+			//}
 		});
 	});
 }
