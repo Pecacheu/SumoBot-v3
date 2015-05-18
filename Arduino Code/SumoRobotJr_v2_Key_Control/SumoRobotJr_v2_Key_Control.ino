@@ -76,19 +76,18 @@ void loop() {
     
     //Run Next Command:
     if(cmd && data) {
-      Serial.print("C"); Serial.print(cmd); Serial.print(",D"); Serial.println(data); //<< DEBUG
       if(cmd == 'A') { //Key On Event:
-        Serial.print("ON RECV: "); Serial.println(data); //<< DEBUG
+        Serial.print("Key On: "); Serial.println(String(data)); //<< DEBUG
              if(data == 'U') { driveMotor(1, true, 128, true);  driveMotor(2, true, 128, false); } //Up Key
         else if(data == 'D') { driveMotor(1, true, 128, false); driveMotor(2, true, 128, true);  } //Down Key
-        //else if(data == 'L') { driveMotor(1, true, 128, true);  driveMotor(2, true, 128, true);  } //Left Key
-        //else if(data == 'R') { driveMotor(1, true, 128, true);  driveMotor(2, true, 128, true);  } //Right Key
+        else if(data == 'L') { driveMotor(1, true, 128, true);  driveMotor(2, true, 128, true);  } //Left Key
+        else if(data == 'R') { driveMotor(1, true, 128, false); driveMotor(2, true, 128, false); } //Right Key
       } else if(cmd == 'a' && data) { //Key Off Event:
-        Serial.print("OFF RECV: "); Serial.println(data); //<< DEBUG
+        Serial.print("Key Off: "); Serial.println(String(data)); //<< DEBUG
              if(data == 'U') { driveMotor(1, false, 1, false); driveMotor(2, false, 1, false); } //Up Key
         else if(data == 'D') { driveMotor(1, false, 1, false); driveMotor(2, false, 1, false); } //Down Key
-        //else if(data == 'L') { driveMotor(1, false, 1, false); driveMotor(2, false, 1, false); } //Left Key
-        //else if(data == 'R') { driveMotor(1, false, 1, false); driveMotor(2, false, 1, false); } //Right Key
+        else if(data == 'L') { driveMotor(1, false, 1, false); driveMotor(2, false, 1, false); } //Left Key
+        else if(data == 'R') { driveMotor(1, false, 1, false); driveMotor(2, false, 1, false); } //Right Key
       }
       cmd = 0; data = 0;
     }

@@ -15,4 +15,4 @@ function sendInterface(response) {
 }
 
 exports.sendInterface = sendInterface;
-exports.debug = debug;
+exports.debug = function(db) { debug = db; };

@@ -1,8 +1,25 @@
 <!DOCTYPE HTML>
-<html><head>
+<html>
+<head>
 		<title>SumoBot Control Interface</title>
 		<script src="/socket.io/socket.io.js"></script>
 		<style>
+		body {
+			padding:0px;
+			margin:0px;
+		}
+		#topBar {
+			color:#EAEAEA;
+			background-color: #323232;
+			/* border-radius: 0px 0px 5px 5px; */
+			position:fixed;
+			width:100%;
+			padding:2px;
+			overflow: auto;
+			/* font-family:Segoe, "Helvetica", "Segoe UI", "DejaVu Sans", "Trebuchet MS", Verdana, sans-serif; */
+			font-family:"Helvetica Rounded Bold", "Khmer UI", "Helvetica Bold", "Helvetica Neue Bold", "Arial Rounded MT Bold", "Arial Bold", sans-serif;
+			font-size:12px;
+		}
 		#msgList {
 			border-color:#F1E31D;
 			border-style:outset;
@@ -10,32 +27,38 @@
 			border-radius:10px;
 			font-family:"Lucida Grande", "Lucida Sans Unicode", "Lucida Sans", "DejaVu Sans", Verdana, sans-serif;
 			font-size:18px;
+			margin:0.5%;
 		}
 		</style>
-	</head>
+</head>
 	<body bgcolor="#714300">
 		<script>
-		var iosocket;
+		var iosocket; //#2A2A2A
+		var autoScrollEnabled = true;
 		
 		function keyDown(keyEvent) {
-			document.body.bgColor = "#000000";
-			document.getElementById("msgList").style.color = "#FFFFFF";
-			var key = {};
-			key[0] = keyEvent.shiftKey; key[1] = keyEvent.altKey;
-			key[2] = keyEvent.ctrlKey; key[3] = keyEvent.metaKey;
-			key[4] = keyEvent.keyCode;
-			iosocket.emit('movementKeyDown', JSON.stringify(key));
+			if(keyEvent.keyCode >= 37 && keyEvent.keyCode <= 40) {
+				keyEvent.preventDefault();
+				document.body.bgColor = "#000000";
+				document.getElementById("msgList").style.color = "#FFFFFF";
+				var key = {}; key[0] = keyEvent.shiftKey;
+				key[1] = keyEvent.altKey; key[2] = keyEvent.ctrlKey;
+				key[3] = keyEvent.metaKey; key[4] = keyEvent.keyCode;
+				iosocket.emit('movementKeyDown', JSON.stringify(key));
+			}
 		}
 		
 		function keyUp(keyEvent) {
-			document.body.bgColor = "#714300";
-			document.getElementById("msgList").style.color = "#000000";
-			var key = {};
-			key[0] = keyEvent.shiftKey; key[1] = keyEvent.altKey;
-			key[2] = keyEvent.ctrlKey; key[3] = keyEvent.metaKey;
-			key[4] = keyEvent.keyCode;
-			iosocket.emit('movementKeyUp', JSON.stringify(key));
-		}
+			if(keyEvent.keyCode >= 37 && keyEvent.keyCode <= 40) {
+				keyEvent.preventDefault();
+				document.body.bgColor = "#714300";
+				document.getElementById("msgList").style.color = "#000000";
+				var key = {}; key[0] = keyEvent.shiftKey;
+				key[1] = keyEvent.altKey; key[2] = keyEvent.ctrlKey;
+				key[3] = keyEvent.metaKey; key[4] = keyEvent.keyCode;
+				iosocket.emit('movementKeyUp', JSON.stringify(key));
+			}
+		} 
 		
 		function initSocket() {
 			iosocket = io.connect();
@@ -43,7 +66,12 @@
 			iosocket.on('onconnection', function(initData) {
 				//Get ready to recieve other messages from the server:
 				iosocket.on('updateData', function (data) {
+					var triggerScr = false;
+					if(autoScrollEnabled && window.scrollX >= document.body.scrollHeight) triggerScr = true;
+					
 					document.getElementById("msgList").innerHTML += ("\n<br>"+data);
+					//document.getElementById("msgList").scrollIntoView(false);
+					if(triggerScr) window.scrollTo(0, document.body.scrollHeight);
 				});
 				//Get ready to send messages too:
 				document.onkeydown = keyDown; document.onkeyup = keyUp;
@@ -52,6 +80,11 @@
 		
 		window.onload = initSocket;
 		</script>
+        <div align="center" id="topBar">
+        	<input type="checkbox" id="autoScroll" checked onClick="autoScrollEnabled = document.getElementById('autoScroll').checked;">
+            Auto Scroll
+        </div>
+        <div style="height:24px;"></div>
 		<div align="center" id="msgList">
 		Recieved Messages:
 		</div>

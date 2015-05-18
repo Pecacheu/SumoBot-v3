@@ -16,4 +16,4 @@ function route(handle, pathname, response, request) {
 }
 
 exports.route = route;
-exports.debug = debug;
+exports.debug = function(db) { debug = db; };
