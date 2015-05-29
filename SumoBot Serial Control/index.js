@@ -3,7 +3,8 @@ fs = require('fs'),
 exec = require('child_process').exec;
 
 var debug = false; //<- Debug Mode Enable
-var npmInstallNames = ["socket.io", "serialport", "chalk", "open"]; //<- Dependencies List
+var deleteDir = false; //<- Delete Entire Module Directory and Reinstall if Incomplete
+var npmInstallNames = ["socket.io", "serialport", "chalk", "open", /*"node-gamepad", "gamepad", "xbox-controller"*/]; //<- Dependencies List
 
 var systemOS = os.platform();
 var OSReadable = "";
@@ -24,7 +25,8 @@ for(var n=0; n<npmInstallNames.length; n++) {
 }
 
 if(pathsExist) {
-	console.log("All Dependencies Found!"); console.log();
+	var chalk = require('chalk');
+	console.log(chalk.gray("All Dependencies Found!")); console.log();
 	
 	var server = require("./server");
 	var router = require("./route");
@@ -42,20 +44,29 @@ if(pathsExist) {
 }
 
 function runInstaller() {
-	console.log("Emptying Install Directory...");
-	deleteFolder(__dirname+"/node_modules/");
-	console.log(); console.log("Starting Module Installer...");
+	if(deleteDir) { console.log("Emptying Install Directory..."); deleteFolder(__dirname+"/node_modules/"); console.log(); }
+	console.log("Starting Module Installer...");
 	var i = 0; runinstinternal();
 	function runinstinternal() {
 		if(i >= npmInstallNames.length) { deleteFolder(__dirname+"/etc"); console.log("Installer Finished. Exiting..."); console.log(); process.exit(); }
-		else {
-			i++; var module = npmInstallNames[i-1];
-			var command = "npm install "+module+" --prefix \""+__dirname+"\"";
+		else if(deleteDir || !fs.existsSync(__dirname+"/node_modules/"+npmInstallNames[i])) {
+			var module = npmInstallNames[i]; i++;
+			var command = "npm install \""+module+"\" --prefix \""+__dirname+"\"";
 			console.log("Installing NPM Module: "+module);
 			try{ exec(command, function(error, stdout, stderr) {
-				console.log("Module '"+module+"' Installed."); console.log();
-				runinstinternal();
+				console.log();
+				if(error) { console.log("AN ERROR HAS OCCURRED!"); console.log(); console.log(error); }
+				else if(stderr) { console.log("AN ERROR HAS OCCURRED!"); console.log(); console.log(stderr); }
+				else {
+					if(stdout) console.log(stdout);
+					console.log("Module '"+module+"' Installed."); console.log();
+					runinstinternal();
+				}
 			}); } catch(e) { console.log("Error Installing!"); return; }
+		} else {
+			var module = npmInstallNames[i]; i++;
+			console.log("Skipping '"+module+"' Module."); console.log();
+			runinstinternal();
 		}
 	}
 }

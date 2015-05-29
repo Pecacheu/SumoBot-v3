@@ -6,11 +6,65 @@ chalk = require('chalk'),
 SerialObject = require('serialport');
 try { var open = require('open'); } catch(e) { console.log(chalk.dim("NodeOpen not installed, browser will not auto-open.")); console.log(); }
 
+//Gamepad Control:
+/*var XboxController = require('xbox-controller');
+var xboxGamepad = new XboxController;
+xboxGamepad.rumble(255, 255);*/
+
+/*var NodeGamePad = require('node-gamepad');
+var otherGamepad = new NodeGamePad("logitech/rumblepad2", {vendorID: 0x046D, productID: 0xC219}); //"logitech/rumblepad2", {vendorID: 0x046D, productID: 0xC219}
+otherGamepad.connect();
+otherGamepad.on('dpadUp:press', function() {
+	console.log('up');
+});
+otherGamepad.on('dpadDown:press', function() {
+	console.log('down');
+});*/
+
+/*var gamepad = require('gamepad');
+gamepad.on("attach", function (data) {
+  console.log("attach: " + data);
+});
+// Initialize the library 
+gamepad.init()
+// List the state of all currently attached devices 
+for (var i = 0, l = gamepad.numDevices(); i < l; i++) {
+  console.log(i, gamepad.deviceAtIndex());
+}
+// Create a game loop and poll for events 
+setInterval(gamepad.processEvents, 16);
+// Scan for new gamepads at a slower rate 
+setInterval(gamepad.detectDevices, 500);
+// Listen for move events on all gamepads 
+gamepad.on("move", function (id, axis, value) {
+  console.log("move", {
+    id: id,
+    axis: axis,
+    value: value,
+  });
+});
+// Listen for button up events on all gamepads 
+gamepad.on("up", function (id, num) {
+  console.log("up", {
+    id: id,
+    num: num,
+  });
+});
+// Listen for button down events on all gamepads 
+gamepad.on("down", function (id, num) {
+  console.log("down", {
+    id: id,
+    num: num,
+  });
+});*/
+
 var debug = false;
 var socketServer;
 var serverSocket;
 var serialPort;
 var portName;
+var lastAxisDir = [];
+var btnOn = [];
 var keyOn = [];
 
 var endChar = '\r\n'; //If specified, program waits for this character before sending update strings.
@@ -96,33 +150,47 @@ function initSocketIO(httpServer) {
 		socket.on('movementKeyDown', function(keyRaw) {
 			var key = JSON.parse(keyRaw);
 			if(key[4] == 38 && !keyOn[key[4]]) {
-				serialPort.write('A' + 'U'); //Arrow Key On, Up
+				serialPort.write('A' + 'U' + String.fromCharCode(127)); //Arrow Key On, Up
 				keyOn[key[4]] = true; //Save Key State
 			} else if(key[4] == 40 && !keyOn[key[4]]) {
-				serialPort.write('A' + 'D'); //Arrow Key On, Down
+				serialPort.write('A' + 'D' + String.fromCharCode(127)); //Arrow Key On, Down
 				keyOn[key[4]] = true;
 			} else if(key[4] == 37 && !keyOn[key[4]]) {
-				serialPort.write('A' + 'L'); //Arrow Key On, Left
+				serialPort.write('A' + 'L' + String.fromCharCode(127)); //Arrow Key On, Left
 				keyOn[key[4]] = true;
 			} else if(key[4] == 39 && !keyOn[key[4]]) {
-				serialPort.write('A' + 'R'); //Arrow Key On, Right
+				serialPort.write('A' + 'R' + String.fromCharCode(127)); //Arrow Key On, Right
 				keyOn[key[4]] = true;
 			}
 		});
 		socket.on('movementKeyUp', function(keyRaw) {
 			var key = JSON.parse(keyRaw);
 			if(key[4] == 38 && keyOn[key[4]]) {
-				serialPort.write('a' + 'U'); //Arrow Key Off, Up
+				serialPort.write('a' + 'U' + String.fromCharCode(0)); //Arrow Key Off, Up
 				keyOn[key[4]] = false; //Save Key State
 			} else if(key[4] == 40 && keyOn[key[4]]) {
-				serialPort.write('a' + 'D'); //Arrow Key Off, Down
+				serialPort.write('a' + 'D' + String.fromCharCode(0)); //Arrow Key Off, Down
 				keyOn[key[4]] = false;
 			} else if(key[4] == 37 && keyOn[key[4]]) {
-				serialPort.write('a' + 'L'); //Arrow Key Off, Left
+				serialPort.write('a' + 'L' + String.fromCharCode(0)); //Arrow Key Off, Left
 				keyOn[key[4]] = false;
 			} else if(key[4] == 39 && keyOn[key[4]]) {
-				serialPort.write('a' + 'R'); //Arrow Key Off, Right
+				serialPort.write('a' + 'R' + String.fromCharCode(0)); //Arrow Key Off, Right
 				keyOn[key[4]] = false;
+			}
+		});
+		socket.on('gamepadAxis', function(dataRaw) {
+			var data = JSON.parse(dataRaw);
+			var axis = data[0]; var value = data[1];
+			var sndValue = String.fromCharCode(Math.floor(Math.abs(value) * 255));
+			if(axis == "LEFT_STICK_HORIZONTAL" || axis == "RIGHT_STICK_HORIZONTAL") {
+				if(Math.abs(value) < 0.06 && lastAxisDir[0]) { serialPort.write('a' + lastAxisDir[0] + sndValue); delete lastAxisDir[0]; }
+				else if(value > 0) { serialPort.write('A' + 'R' + sndValue); lastAxisDir[0] = 'R'; }
+				else if(value < 0) { serialPort.write('A' + 'L' + sndValue); lastAxisDir[0] = 'L'; }
+			} else if(axis == "LEFT_STICK_VERTICAL" || axis == "RIGHT_STICK_VERTICAL") {
+				if(Math.abs(value) < 0.06 && lastAxisDir[1]) { serialPort.write('a' + lastAxisDir[1] + sndValue); delete lastAxisDir[1]; }
+				else if(value > 0) { serialPort.write('A' + 'D' + sndValue); lastAxisDir[1] = 'D'; }
+				else if(value < 0) { serialPort.write('A' + 'U' + sndValue); lastAxisDir[1] = 'U'; }
 			}
 		});
 	});

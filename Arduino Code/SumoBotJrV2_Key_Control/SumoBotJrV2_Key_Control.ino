@@ -9,19 +9,19 @@
 #define STATUS_LED 13
 
 //Pin Numbers:
-#define DIR_1  8
-#define STEP_1 9
-#define SLP_1  10
+#define DIR_1  6
+#define STEP_1 5
+#define SLP_1  4
 
 #define CONFIG1_M0 3
 #define CONFIG1_M1 2
 
-#define DIR_2  5
-#define STEP_2 6
-#define SLP_2  7
+#define DIR_2  10
+#define STEP_2 11
+#define SLP_2  12
 
-#define CONFIG2_M0 12
-#define CONFIG2_M1 11
+#define CONFIG2_M0 9
+#define CONFIG2_M1 8
 
 //Globals: (Don't touch these!)
 int savedStepMode = 1;
@@ -63,33 +63,37 @@ void setup() {
 }
 
 void loop() {
-  unsigned char cmd = 0; unsigned char data = 0;
+  unsigned char cmd = 0; unsigned char data1 = 0; unsigned char data2 = 0;
   while(1) {
     //Read New Commands From Serial:
     if(Serial.available()) {
       while(Serial.available() > 0) {
         char newChar = Serial.read();
-        if(cmd) { data = newChar; break; }
+        if(cmd && data1) { data2 = newChar; break; }
+        else if(cmd) { data1 = newChar; }
         else { cmd = newChar; }
       }
     }
     
     //Run Next Command:
-    if(cmd && data) {
+    if(cmd && data1 && data2) {
+      Serial.write("Data: "); Serial.write(data1); Serial.write(data2); Serial.println(", Event Type: "); //<< DEBUG
       if(cmd == 'A') { //Key On Event:
-        Serial.print("Key On: "); Serial.println(String(data)); //<< DEBUG
-             if(data == 'U') { driveMotor(1, true, 128, true);  driveMotor(2, true, 128, false); } //Up Key
-        else if(data == 'D') { driveMotor(1, true, 128, false); driveMotor(2, true, 128, true);  } //Down Key
-        else if(data == 'L') { driveMotor(1, true, 128, true);  driveMotor(2, true, 128, true);  } //Left Key
-        else if(data == 'R') { driveMotor(1, true, 128, false); driveMotor(2, true, 128, false); } //Right Key
-      } else if(cmd == 'a' && data) { //Key Off Event:
-        Serial.print("Key Off: "); Serial.println(String(data)); //<< DEBUG
-             if(data == 'U') { driveMotor(1, false, 1, false); driveMotor(2, false, 1, false); } //Up Key
-        else if(data == 'D') { driveMotor(1, false, 1, false); driveMotor(2, false, 1, false); } //Down Key
-        else if(data == 'L') { driveMotor(1, false, 1, false); driveMotor(2, false, 1, false); } //Left Key
-        else if(data == 'R') { driveMotor(1, false, 1, false); driveMotor(2, false, 1, false); } //Right Key
+        Serial.println("Key On"); //<< DEBUG
+             if(data1 == 'U') { driveMotor(1, true, 200, false); driveMotor(2, true, 200, true);  } //Up Key
+        else if(data1 == 'D') { driveMotor(1, true, 200, true);  driveMotor(2, true, 200, false); } //Down Key
+        else if(data1 == 'L') { driveMotor(1, true, 128, true);  driveMotor(2, true, 128, true);  } //Left Key
+        else if(data1 == 'R') { driveMotor(1, true, 128, false); driveMotor(2, true, 128, false); } //Right Key
+      } else if(cmd == 'a') { //Key Off Event:
+        Serial.println("Key Off"); //<< DEBUG
+             if(data1 == 'U') { driveMotor(1, false, 1, false); driveMotor(2, false, 1, false); } //Up Key
+        else if(data1 == 'D') { driveMotor(1, false, 1, false); driveMotor(2, false, 1, false); } //Down Key
+        else if(data1 == 'L') { driveMotor(1, false, 1, false); driveMotor(2, false, 1, false); } //Left Key
+        else if(data1 == 'R') { driveMotor(1, false, 1, false); driveMotor(2, false, 1, false); } //Right Key
+      } else { //Unknown Event:
+        Serial.println("Unknown"); //<< DEBUG
       }
-      cmd = 0; data = 0;
+      cmd = 0; data1 = 0; data2 = 0;
     }
     
     //digitalWrite(STATUS_LED, HIGH); delay(50);
