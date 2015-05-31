@@ -63,64 +63,42 @@ void setup() {
 }
 
 void loop() {
-  unsigned char cmd = 0; unsigned char data1 = 0; unsigned char data2 = 0;
+  String msg = ""; boolean msgDone = false;
   while(1) {
     //Read New Commands From Serial:
-    if(Serial.available()) {
-      while(Serial.available() > 0) {
-        char newChar = Serial.read();
-        if(cmd && data1) { data2 = newChar; break; }
-        else if(cmd) { data1 = newChar; }
-        else { cmd = newChar; }
-      }
+    while(Serial.available() > 0) {
+      char newChar = Serial.read();
+      //Serial.print((unsigned char)newChar); Serial.print(" = '"); Serial.write(newChar); Serial.println("'"); //<< DEBUG
+      if(newChar == '\n') { msgDone = true; break; }
+      else msg += newChar;
     }
     
-    //Run Next Command:
-    if(cmd && data1 && data2) {
-      Serial.write("Data: "); Serial.write(data1); Serial.write(data2); Serial.println(", Event Type: "); //<< DEBUG
-      if(cmd == 'A') { //Key On Event:
-        Serial.println("Key On"); //<< DEBUG
-             if(data1 == 'U') { driveMotor(1, true, 200, false); driveMotor(2, true, 200, true);  } //Up Key
-        else if(data1 == 'D') { driveMotor(1, true, 200, true);  driveMotor(2, true, 200, false); } //Down Key
-        else if(data1 == 'L') { driveMotor(1, true, 128, true);  driveMotor(2, true, 128, true);  } //Left Key
-        else if(data1 == 'R') { driveMotor(1, true, 128, false); driveMotor(2, true, 128, false); } //Right Key
-      } else if(cmd == 'a') { //Key Off Event:
-        Serial.println("Key Off"); //<< DEBUG
-             if(data1 == 'U') { driveMotor(1, false, 1, false); driveMotor(2, false, 1, false); } //Up Key
-        else if(data1 == 'D') { driveMotor(1, false, 1, false); driveMotor(2, false, 1, false); } //Down Key
-        else if(data1 == 'L') { driveMotor(1, false, 1, false); driveMotor(2, false, 1, false); } //Left Key
-        else if(data1 == 'R') { driveMotor(1, false, 1, false); driveMotor(2, false, 1, false); } //Right Key
+    //Process Next Command:
+    if(msgDone && msg.length() >= 1) {
+      Serial.print("Data: [");
+      for(int i=0; i<msg.length(); i++) { if(i > 0) Serial.print(", "); Serial.print((unsigned char)msg[i]); }
+      Serial.print("], Event Type: ");
+      if(msg[0] == 'A' && msg.length() == 3) { //Key On Event:
+        Serial.print("Key On, Speed: "); Serial.println((unsigned char)msg[2]);
+             if(msg[1] == 'U') { driveMotor(1, true, msg[2], false); driveMotor(2, true, msg[2], true);  } //Up Key
+        else if(msg[1] == 'D') { driveMotor(1, true, msg[2], true);  driveMotor(2, true, msg[2], false); } //Down Key
+        else if(msg[1] == 'L') { driveMotor(1, true, msg[2], true);  driveMotor(2, true, msg[2], true);  } //Left Key
+        else if(msg[1] == 'R') { driveMotor(1, true, msg[2], false); driveMotor(2, true, msg[2], false); } //Right Key
+        digitalWrite(STATUS_LED, HIGH);
+      } else if(msg[0] == 'a' && msg.length() == 2) { //Key Off Event:
+        Serial.println("Key Off");
+             if(msg[1] == 'U') { driveMotor(1, false, 1, false); driveMotor(2, false, 1, false); } //Up Key
+        else if(msg[1] == 'D') { driveMotor(1, false, 1, false); driveMotor(2, false, 1, false); } //Down Key
+        else if(msg[1] == 'L') { driveMotor(1, false, 1, false); driveMotor(2, false, 1, false); } //Left Key
+        else if(msg[1] == 'R') { driveMotor(1, false, 1, false); driveMotor(2, false, 1, false); } //Right Key
+        digitalWrite(STATUS_LED, LOW);
       } else { //Unknown Event:
-        Serial.println("Unknown"); //<< DEBUG
+        Serial.println("Unknown");
       }
-      cmd = 0; data1 = 0; data2 = 0;
     }
     
-    //digitalWrite(STATUS_LED, HIGH); delay(50);
-    //digitalWrite(STATUS_LED,  LOW); delay(50);
-    
-//    driveMotor(1, true, 255, dir);
-//    driveMotor(2, true, 255, dir);
-//    for(int c=0; c<5; c++) {
-//      digitalWrite(STATUS_LED, HIGH); delay(500);
-//      digitalWrite(STATUS_LED,  LOW); delay(500);
-//    }
-//    driveMotor(1, false, 1, dir);
-//    driveMotor(2, false, 1, dir);
-    
-    /*delay(500);
-    
-    if(count >= 10) {
-      dir = !dir;
-      count = 0;
-      disengageMotor(1);
-      disengageMotor(2);
-      delay(2500);
-      engageMotor(1);
-      engageMotor(2);
-      delay(500);
-    }
-    count++;*/
+    //Clear Processed Message Data:
+    if(msgDone) { msg = ""; msgDone = false; }
   }
 }
 

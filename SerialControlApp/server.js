@@ -78,7 +78,7 @@ function selectPort(completionFunc) {
 	SerialObject.list(function(err, ports) {
 		console.log(chalk.yellow("--------- Available Ports ---------"));
 		for(var i=0; i < ports.length; i++) {
-			var commString = "-- "+ports[i].comName;
+			var commString = "["+(i+1)+"] "+ports[i].comName;
 			if(ports[i].manufacturer) commString += (", Brand = '"+ports[i].manufacturer+"'");
 			console.log(commString);
 		}
@@ -87,10 +87,12 @@ function selectPort(completionFunc) {
 		console.log(chalk.cyan("Please enter the port you want to use:"));
 		// wait for user input:
 		function onPortSelectInput(newPort) {
-			if(newPort.search('\n') != -1) newPort = newPort.substring(0, newPort.search('\n'));
-			if(newPort.search('\r') != -1) newPort = newPort.substring(0, newPort.search('\r'));
+			newPort = newPort.replace(/\n/g, ""); newPort = newPort.replace(/\r/g, "");
 			var portExists = false;
 			for(var i=0; i < ports.length; i++) if(newPort == ports[i].comName) { portExists = true; break; }
+			if(!portExists && Number(newPort) && ports[Number(newPort)-1]) {
+				newPort = ports[Number(newPort)-1].comName; portExists = true;
+			}
 			if(portExists) {
 				console.log(chalk.bgGreen.black("Listening on port \""+newPort+"\""));
 				process.stdin.removeListener('data', onPortSelectInput);
@@ -111,6 +113,21 @@ function selectPort(completionFunc) {
 		});
 		process.stdin.on('data', onPortSelectInput);
 	});
+}
+
+function writeSerial(data) {
+	if(typeof data == "string") { serialPort.write(data + '\n'); }
+	else if(typeof data == "object") {
+		for(var i=0; i<data.length; i++) {
+			if(typeof data[i] == "string" && data[i].search('\n') < 0) {
+				serialPort.write(data[i]);
+			} else if(typeof data[i] == "number") {
+				if(data[i] != '\n'.charCodeAt()) serialPort.write(Buffer([data[i]]));
+				else serialPort.write(Buffer(['\n'.charCodeAt()-1]));
+			}
+		}
+		serialPort.write('\n');
+	}
 }
 
 // handle contains locations to browse to (vote and poll); pathnames.
@@ -150,47 +167,49 @@ function initSocketIO(httpServer) {
 		socket.on('movementKeyDown', function(keyRaw) {
 			var key = JSON.parse(keyRaw);
 			if(key[4] == 38 && !keyOn[key[4]]) {
-				serialPort.write('A' + 'U' + String.fromCharCode(127)); //Arrow Key On, Up
+				writeSerial(['A', 'U', 220]); //Arrow Key On, Up
 				keyOn[key[4]] = true; //Save Key State
 			} else if(key[4] == 40 && !keyOn[key[4]]) {
-				serialPort.write('A' + 'D' + String.fromCharCode(127)); //Arrow Key On, Down
+				writeSerial(['A', 'D', 220]); //Arrow Key On, Down
 				keyOn[key[4]] = true;
 			} else if(key[4] == 37 && !keyOn[key[4]]) {
-				serialPort.write('A' + 'L' + String.fromCharCode(127)); //Arrow Key On, Left
+				writeSerial(['A', 'L', 127]); //Arrow Key On, Left
 				keyOn[key[4]] = true;
 			} else if(key[4] == 39 && !keyOn[key[4]]) {
-				serialPort.write('A' + 'R' + String.fromCharCode(127)); //Arrow Key On, Right
+				writeSerial(['A', 'L', 127]); //Arrow Key On, Right
 				keyOn[key[4]] = true;
 			}
 		});
 		socket.on('movementKeyUp', function(keyRaw) {
 			var key = JSON.parse(keyRaw);
 			if(key[4] == 38 && keyOn[key[4]]) {
-				serialPort.write('a' + 'U' + String.fromCharCode(0)); //Arrow Key Off, Up
+				writeSerial('a' + 'U'); //Arrow Key Off, Up
 				keyOn[key[4]] = false; //Save Key State
 			} else if(key[4] == 40 && keyOn[key[4]]) {
-				serialPort.write('a' + 'D' + String.fromCharCode(0)); //Arrow Key Off, Down
+				writeSerial('a' + 'D'); //Arrow Key Off, Down
 				keyOn[key[4]] = false;
 			} else if(key[4] == 37 && keyOn[key[4]]) {
-				serialPort.write('a' + 'L' + String.fromCharCode(0)); //Arrow Key Off, Left
+				writeSerial('a' + 'L'); //Arrow Key Off, Left
 				keyOn[key[4]] = false;
 			} else if(key[4] == 39 && keyOn[key[4]]) {
-				serialPort.write('a' + 'R' + String.fromCharCode(0)); //Arrow Key Off, Right
+				writeSerial('a' + 'R'); //Arrow Key Off, Right
 				keyOn[key[4]] = false;
 			}
 		});
 		socket.on('gamepadAxis', function(dataRaw) {
+			//Parse Recieved Data & Translate Pressure Values:
 			var data = JSON.parse(dataRaw);
 			var axis = data[0]; var value = data[1];
-			var sndValue = String.fromCharCode(Math.floor(Math.abs(value) * 255));
+			var sndStr = String.fromCharCode(Math.floor(Math.abs(value) * 255));
+			//Send Serial Data to Arduino:
 			if(axis == "LEFT_STICK_HORIZONTAL" || axis == "RIGHT_STICK_HORIZONTAL") {
-				if(Math.abs(value) < 0.06 && lastAxisDir[0]) { serialPort.write('a' + lastAxisDir[0] + sndValue); delete lastAxisDir[0]; }
-				else if(value > 0) { serialPort.write('A' + 'R' + sndValue); lastAxisDir[0] = 'R'; }
-				else if(value < 0) { serialPort.write('A' + 'L' + sndValue); lastAxisDir[0] = 'L'; }
+				if(Math.abs(value) < 0.06 && lastAxisDir[0]) { writeSerial(['a', lastAxisDir[0], sndStr]); delete lastAxisDir[0]; }
+				else if(value > 0) { writeSerial(['A', 'R', sndStr]); lastAxisDir[0] = 'R'; }
+				else if(value < 0) { writeSerial(['A', 'L', sndStr]); lastAxisDir[0] = 'L'; }
 			} else if(axis == "LEFT_STICK_VERTICAL" || axis == "RIGHT_STICK_VERTICAL") {
-				if(Math.abs(value) < 0.06 && lastAxisDir[1]) { serialPort.write('a' + lastAxisDir[1] + sndValue); delete lastAxisDir[1]; }
-				else if(value > 0) { serialPort.write('A' + 'D' + sndValue); lastAxisDir[1] = 'D'; }
-				else if(value < 0) { serialPort.write('A' + 'U' + sndValue); lastAxisDir[1] = 'U'; }
+				if(Math.abs(value) < 0.06 && lastAxisDir[1]) { writeSerial(['a', lastAxisDir[1], sndStr]); delete lastAxisDir[1]; }
+				else if(value > 0) { writeSerial(['A', 'D', sndStr]); lastAxisDir[1] = 'D'; }
+				else if(value < 0) { writeSerial(['A', 'U', sndStr]); lastAxisDir[1] = 'U'; }
 			}
 		});
 	});
