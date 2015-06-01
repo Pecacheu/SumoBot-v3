@@ -253,13 +253,13 @@
 		
 		//Gamepad Event Handlers:
 		function onPress(gamepad, button, value) {
-			printToTerminal("["+gamepad.index+"] Button Pressed: (btn="+findValue(joySupport.BUTTONS, button)+", val="+value+")");
+			//printToTerminal("["+gamepad.index+"] Button Pressed: (btn="+findValue(joySupport.BUTTONS, button)+", val="+value+")");
 			document.body.bgColor = "#000000";
 			document.getElementById("msgList").style.color = "#FFFFFF";
 		}
 		
 		function onRelease(gamepad, button, value) {
-			printToTerminal("["+gamepad.index+"] Button Released: (btn="+findValue(joySupport.BUTTONS, button)+", val="+value+")");
+			//printToTerminal("["+gamepad.index+"] Button Released: (btn="+findValue(joySupport.BUTTONS, button)+", val="+value+")");
 			document.body.bgColor = "#714300";
 			document.getElementById("msgList").style.color = "#000000";
 		}

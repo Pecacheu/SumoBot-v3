@@ -78,19 +78,16 @@ void loop() {
       Serial.print("Data: [");
       for(int i=0; i<msg.length(); i++) { if(i > 0) Serial.print(", "); Serial.print((unsigned char)msg[i]); }
       Serial.print("], Event Type: ");
-      if(msg[0] == 'A' && msg.length() == 3) { //Key On Event:
+      if(msg[0] == 'A' && msg.length() >= 3) { //Key On Event:
         Serial.print("Key On, Speed: "); Serial.println((unsigned char)msg[2]);
              if(msg[1] == 'U') { driveMotor(1, true, msg[2], false); driveMotor(2, true, msg[2], true);  } //Up Key
         else if(msg[1] == 'D') { driveMotor(1, true, msg[2], true);  driveMotor(2, true, msg[2], false); } //Down Key
         else if(msg[1] == 'L') { driveMotor(1, true, msg[2], true);  driveMotor(2, true, msg[2], true);  } //Left Key
         else if(msg[1] == 'R') { driveMotor(1, true, msg[2], false); driveMotor(2, true, msg[2], false); } //Right Key
         digitalWrite(STATUS_LED, HIGH);
-      } else if(msg[0] == 'a' && msg.length() == 2) { //Key Off Event:
+      } else if(msg[0] == 'a') { //Key Off Event:
         Serial.println("Key Off");
-             if(msg[1] == 'U') { driveMotor(1, false, 1, false); driveMotor(2, false, 1, false); } //Up Key
-        else if(msg[1] == 'D') { driveMotor(1, false, 1, false); driveMotor(2, false, 1, false); } //Down Key
-        else if(msg[1] == 'L') { driveMotor(1, false, 1, false); driveMotor(2, false, 1, false); } //Left Key
-        else if(msg[1] == 'R') { driveMotor(1, false, 1, false); driveMotor(2, false, 1, false); } //Right Key
+        driveMotor(1, false, 1, false); driveMotor(2, false, 1, false);
         digitalWrite(STATUS_LED, LOW);
       } else { //Unknown Event:
         Serial.println("Unknown");
