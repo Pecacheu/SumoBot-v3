@@ -78,17 +78,17 @@ void loop() {
       Serial.print("Data: [");
       for(int i=0; i<msg.length(); i++) { if(i > 0) Serial.print(", "); Serial.print((unsigned char)msg[i]); }
       Serial.print("], Event Type: ");
-      if(msg[0] == 'A' && msg.length() >= 3) { //Key On Event:
-        Serial.print("Key On, Speed: "); Serial.println((unsigned char)msg[2]);
-             if(msg[1] == 'U') { driveMotor(1, true, msg[2], false); driveMotor(2, true, msg[2], true);  } //Up Key
-        else if(msg[1] == 'D') { driveMotor(1, true, msg[2], true);  driveMotor(2, true, msg[2], false); } //Down Key
-        else if(msg[1] == 'L') { driveMotor(1, true, msg[2], true);  driveMotor(2, true, msg[2], true);  } //Left Key
-        else if(msg[1] == 'R') { driveMotor(1, true, msg[2], false); driveMotor(2, true, msg[2], false); } //Right Key
-        digitalWrite(STATUS_LED, HIGH);
-      } else if(msg[0] == 'a') { //Key Off Event:
-        Serial.println("Key Off");
-        driveMotor(1, false, 1, false); driveMotor(2, false, 1, false);
-        digitalWrite(STATUS_LED, LOW);
+      if(msg[0] == 'K' && msg.length() == 5) { //Key Update Event:
+        Serial.println("Key Update");
+        unsigned char UP = msg[1]; unsigned char DOWN = msg[2];
+        unsigned char LEFT = msg[2]; unsigned char RIGHT = msg[4];
+        if(UP > 0 && DOWN == 0 && LEFT == 0 && RIGHT == 0) { driveMotor(1, true, UP, false); driveMotor(2, true, UP, true); digitalWrite(STATUS_LED, HIGH); } //Forward
+        else if(UP > 0 && DOWN == 0 && XOR(LEFT, RIGHT)) { driveMotor(1, true, UP/(255/RIGHT), false); driveMotor(2, true, UP/(255/LEFT), true); digitalWrite(STATUS_LED, HIGH); } //Forward Turn
+        else if(UP == 0 && DOWN > 0 && LEFT == 0 && RIGHT == 0) { driveMotor(1, true, DOWN, true); driveMotor(2, true, DOWN, false); digitalWrite(STATUS_LED, HIGH); } //Backward
+        else if(UP == 0 && DOWN > 0 && XOR(LEFT, RIGHT)) { driveMotor(1, true, DOWN/(255/LEFT), true); driveMotor(2, true, DOWN/(255/RIGHT), false); digitalWrite(STATUS_LED, HIGH); } //Backward Turn
+        else if(UP == 0 && DOWN == 0 && LEFT > 0 && RIGHT == 0) { driveMotor(1, true, LEFT, true); driveMotor(2, true, LEFT, true); digitalWrite(STATUS_LED, HIGH); } //Left
+        else if(UP == 0 && DOWN == 0 && LEFT == 0 && RIGHT > 0) { driveMotor(1, true, RIGHT, false); driveMotor(2, true, RIGHT, false); digitalWrite(STATUS_LED, HIGH); } //Right
+        else { driveMotor(1, false, 1, false); driveMotor(2, false, 1, false); }
       } else { //Unknown Event:
         Serial.println("Unknown");
       }
@@ -97,6 +97,11 @@ void loop() {
     //Clear Processed Message Data:
     if(msgDone) { msg = ""; msgDone = false; }
   }
+}
+
+//An Exclusive-Or Function:
+boolean XOR(boolean a, boolean b) {
+  return a != b;
 }
 
 //Motor Control Functions:
