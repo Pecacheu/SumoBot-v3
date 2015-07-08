@@ -63,9 +63,11 @@ var socketServer;
 var serverSocket;
 var serialPort;
 var portName;
-var btnOn = [];
-var keyOn = [U=0, D=0, L=0, R=0];
-var axisVal = [U=0, D=0, L=0, R=0];
+//var btnOn = [];
+var keyOn = [];
+var keyVal = {L:128, R:128};
+var axisVal = {H:128, V:128};
+var axisDist = {H:0, V:0};
 
 var endChar = '\r\n'; //If specified, program waits for this character before sending update strings.
 
@@ -166,40 +168,42 @@ function initSocketIO(httpServer) {
 		// send data to Arduino serial:
 		socket.on('movementKeyDown', function(keyRaw) {
 			var key = JSON.parse(keyRaw);
-			if(key[4] == 38 && !keyOn['U']) keyOn['U'] = 220; //Up Arrow Key
-			else if(key[4] == 40 && !keyOn['D']) keyOn['D'] = 220; //Down Arrow Key
-			else if(key[4] == 37 && !keyOn['L']) keyOn['L'] = 127; //Left Arrow Key
-			else if(key[4] == 39 && !keyOn['R']) keyOn['R'] = 127; //Right Arrow Key
-			writeSerial(['K', keyOn['U'], keyOn['D'], keyOn['L'], keyOn['R']]);
+			if(key[4] == 38 && !keyOn['U']) { keyOn['U'] = 1; keyVal['L'] = 230; keyVal['R'] = 230; writeVals(); } //Up Arrow Key
+			else if(key[4] == 40 && !keyOn['D']) { keyOn['D'] = 1; keyVal['L'] = 25; keyVal['R'] = 25; writeVals(); } //Down Arrow Key
+			else if(key[4] == 37 && !keyOn['L']) { keyOn['L'] = 1; keyVal['L'] = 200; keyVal['R'] = 55; writeVals(); } //Left Arrow Key
+			else if(key[4] == 39 && !keyOn['R']) { keyOn['R'] = 1; keyVal['L'] = 55; keyVal['R'] = 200; writeVals(); } //Right Arrow Key
 		});
 		socket.on('movementKeyUp', function(keyRaw) {
 			var key = JSON.parse(keyRaw);
-			if(key[4] == 38 && keyOn['U']) keyOn['U'] = 0; //Up Arrow Key
-			else if(key[4] == 40 && keyOn['D']) keyOn['D'] = 0; //Down Arrow Key
-			else if(key[4] == 37 && keyOn['L']) keyOn['L'] = 0; //Left Arrow Key
-			else if(key[4] == 39 && keyOn['R']) keyOn['R'] = 0; //Right Arrow Key
-			writeSerial(['K', keyOn['U'], keyOn['D'], keyOn['L'], keyOn['R']]);
+			if(key[4] == 38 && keyOn['U']) { keyOn['U'] = 0; keyVal['L'] = 128; keyVal['R'] = 128; writeVals(); } //Up Arrow Key
+			else if(key[4] == 40 && keyOn['D']) { keyOn['D'] = 0; keyVal['L'] = 128; keyVal['R'] = 128; writeVals(); } //Down Arrow Key
+			else if(key[4] == 37 && keyOn['L']) { keyOn['L'] = 0; keyVal['L'] = 128; keyVal['R'] = 128; writeVals(); } //Left Arrow Key
+			else if(key[4] == 39 && keyOn['R']) { keyOn['R'] = 0; keyVal['L'] = 128; keyVal['R'] = 128; writeVals(); } //Right Arrow Key
 		});
 		socket.on('gamepadAxis', function(dataRaw) {
 			//Parse Recieved Data & Translate Pressure Values:
 			var data = JSON.parse(dataRaw);
 			var axis = data[0]; var value = data[1];
-			var sndVal = Math.floor(Math.abs(value) * 255);
+			var mapVal = Math.floor(-value * 127) + 128;
+			//Determine Primary Axis:
+			if(axis == "LEFT_STICK_HORIZONTAL" || axis == "RIGHT_STICK_HORIZONTAL") { axisDist['H'] = Math.abs(value); }
+			else if(axis == "LEFT_STICK_VERTICAL" || axis == "RIGHT_STICK_VERTICAL") { axisDist['V'] = Math.abs(value); }
 			//Send Serial Data to Arduino:
-			if(axis == "LEFT_STICK_HORIZONTAL" || axis == "RIGHT_STICK_HORIZONTAL") {
-				if(Math.abs(value) < 0.05) { axisVal['L'] = 0; axisVal['R'] = 0; }
-				else if(value > 0) { axisVal['R'] = sndVal; axisVal['L'] = 0; }
-				else if(value < 0) { axisVal['L'] = sndVal; axisVal['R'] = 0; }
-				writeSerial(['K', axisVal['U'], axisVal['D'], axisVal['L'], axisVal['R']]);
-			} else if(axis == "LEFT_STICK_VERTICAL" || axis == "RIGHT_STICK_VERTICAL") {
-				if(Math.abs(value) < 0.05) { axisVal['U'] = 0; axisVal['D'] = 0; }
-				else if(value > 0) { axisVal['D'] = sndVal; axisVal['U'] = 0; }
-				else if(value < 0) { axisVal['U'] = sndVal; axisVal['D'] = 0; }
-				writeSerial(['K', axisVal['U'], axisVal['D'], axisVal['L'], axisVal['R']]);
+			if(axisDist['H'] > axisDist['V'] + 0.2) {
+				if(Math.abs(value) < 0.03) { axisVal['H'] = 128; }
+				else axisVal['H'] = mapVal;
+				writeSerial(['K', axisVal['H'], -axisVal['H']+256]);
+			} else {
+				if(Math.abs(value) < 0.03) { axisVal['V'] = 128; }
+				else axisVal['V'] = mapVal;
+				writeSerial(['K', axisVal['V'], axisVal['V']]);
 			}
 		});
 	});
 }
+
+//Reverse axis value:
+function writeVals() { writeSerial(['K', keyVal['L'], keyVal['R']]); }
 
 // Listen to serial port
 function serialListener() {
