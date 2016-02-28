@@ -1,7 +1,7 @@
-//<legalstuff> This work is licensed under a Creative Commons Attribution 4.0 International License. Visit http://creativecommons.org/licenses/by/4.0/ for details. </legalstuff>
-//Arduino code for SumoBot Jr. v2, created by Bryce Peterson (Nickname: Pecacheu, Email: Pecacheu@gmail.com). (Since no code was ever written for the original)
+//<legalstuff> This work is licensed under a GNU General Public License, v3.0. Visit http://gnu.org/licenses/gpl-3.0-standalone.html for details. </legalstuff>
+//Arduino code for SumoBot Jr. v2 (Stepper Version). Copyright (©) 2016, Bryce Peterson (Nickname: Pecacheu, Email: Pecacheu@gmail.com)
 
-// avr-libc library includes:
+//avr-libc library includes:
 #include <avr/io.h>
 #include <avr/interrupt.h>
 

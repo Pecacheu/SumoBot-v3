@@ -1,0 +1,325 @@
+<!DOCTYPE HTML>
+<html><head>
+		<meta charset="utf-8">
+		<title>SumoBot Control Interface</title>
+		<!-- Internal Socket Server Library -->
+		<script src="/socket.io/socket.io.js"></script>
+		<!-- Locally Cached JavaScript Animation Library -->
+		<script src="/resources/TweenLite.min.js"></script>
+		<script src="/resources/TimelineLite.min.js"></script>
+		<script src="/resources/CSSPlugin.min.js"></script>
+		<script>
+		var width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+		var height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
+		
+		function findValue(object, value) {
+			for(var key in object) { if(object[key] == value) return key; }
+			return value;
+		}
+		function printToTerminal(text) {
+			var triggerScr = false;
+			if(autoScrollEnabled || document.body.scrollTop >= document.body.scrollHeight-height-50) triggerScr = true;
+			document.getElementById("msgList").innerHTML += "<br>"+text;
+			if(triggerScr) window.scrollTo(0, document.body.scrollHeight);
+			//document.getElementById("msgList").scrollIntoView(false);
+		}
+		function initPage() {
+			//Init NodeJS Socket:
+			iosocket = io.connect();
+			//Wait for connection message:
+			iosocket.on('onconnection', function(initData) {
+				//Recieve messages from the server:
+				iosocket.on('serialMsg', function (data) {
+					printToTerminal(data);
+				});
+				//Setup event listeners:
+				document.onkeydown = keyDown; document.onkeyup = keyUp;
+	    	});
+			//Init Joystick API:
+			gamepadFunc = ("getGamepads" in navigator && navigator.getGamepads) || ("webkitGetGamepads" in navigator && navigator.webkitGetGamepads) || false;
+			if("getGamepads" in navigator) console.log("GamepadAPI: STANDARD METHOD");
+			if("webkitGetGamepads" in navigator) console.log("GamepadAPI: WEBKIT METHOD");
+			
+			if(gamepadFunc) {
+				//Setup Notification Box:
+				var notificationBox = document.getElementById("notification");
+				//Ease In:
+				joyConnectTween.set(notificationBox, {hidden: "false"})
+				.from(notificationBox, 2, {x: "-102%", opacity: "0", ease: Power3.easeInOut}, 0)
+				.to(document.getElementById("msgList"), 1.5, {y: "44px", ease: Power2.easeInOut}, 0)
+				.add("easeOut", "+=1.5")
+				//Ease Out:
+				.set(notificationBox, {transformOrigin: "center top -15px"}) //perspective: "-15px"
+				.to(notificationBox, 2, {rotationX: 90, y: "10px", opacity: "0", ease: Power3.easeInOut}, "easeOut-=0.3") //y: "-65px"
+				.to(document.getElementById("msgList"), 1.7, {y: "0px", ease: Power3.easeInOut}, "easeOut")
+				.set(notificationBox, {hidden: "true"});
+				//Gamepad Update Code:
+				joySupport.gamepads = {};
+				setInterval(function() {
+					gamepads = gamepadFunc.bind(navigator)(); var gamepadList = parseGamepads(gamepads);
+					
+					if(gamepadList.length != joySupport.gamepads.length) console.log(gamepadList);
+					
+					//Look for new gamepads:
+					if(gamepadList.length > joySupport.gamepads.length) {
+						for(var i=joySupport.gamepads.length; i<gamepadList.length; i++) onConnect(gamepadList[i]);
+					} else if(gamepadList.length < joySupport.gamepads.length) {
+						for(var i=joySupport.gamepads.length; i>gamepadList.length; i--) onDisconnect(joySupport.gamepads[i-1]);
+					} else if(joySupport.gamepads.length > 0) {
+						//Check for changes in button data:
+						for(var g=0; g<gamepadList.length; g++) {
+							var newButtons = gamepadList[g].buttons; var oldButtons = joySupport.gamepads[g].buttons;
+							for(var i=0; i<newButtons.length; i++) {
+								if(i in newButtons && i in oldButtons && newButtons[i] != oldButtons[i]) {
+									var value = Math.round((newButtons[i] + 0.00001) * 100) / 100;
+									if(value > joySupport.ANALOG_THRESHOLD) {
+										onPress(gamepadList[g], i, value);
+									} else {
+										onRelease(gamepadList[g], i, value);
+									}
+								}
+							}
+						}
+						//Check for changes in axis data:
+						for(var g=0; g<gamepadList.length; g++) {
+							var newAxes = gamepadList[g].axes; var oldAxes = joySupport.gamepads[g].axes;
+							for(var i=0; i<newAxes.length; i++) {
+								if(i in newAxes && i in oldAxes && newAxes[i] != oldAxes[i]) {
+									var value = Math.round((newAxes[i] + 0.00001) * 100) / 100;
+									onThumbstick(gamepadList[g], i, value);
+								}
+							}
+						}
+					}
+					joySupport.gamepads = gamepadList;
+				}, 20);
+			} else {
+				//Not Supported Animation:
+				var notificationBox = document.getElementById("notification");
+				joyConnectTween.set(notificationBox, {hidden: "false", transformOrigin: "center top -15px"})
+				.from(notificationBox, 2, {rotationX: 90, y: "10px", opacity: "0", ease: Power3.easeInOut}, 0)
+				.to(document.getElementById("msgList"), 1.7, {y: "44px", ease: Power3.easeInOut}, 0)
+				.set(notificationBox, {hidden: "true"})
+				.add("easeOut", "+=1.5")
+				.set(notificationBox, {transformOrigin: "center top -15px"})
+				.to(notificationBox, 2, {rotationX: 90, y: "10px", opacity: "0", ease: Power3.easeInOut}, "easeOut-=0.3")
+				.to(document.getElementById("msgList"), 1.7, {y: "0px", ease: Power3.easeInOut}, "easeOut")
+				.set(notificationBox, {hidden: "true"});
+				joyConnectTween.play();
+			}
+		}
+		function parseGamepads(gamepadList) {
+			var newList = [];
+			for(var i=0; i<gamepadList.length; i++) {
+				if(typeof gamepadList[i] != "undefined") {
+					var controller = {};
+					var id = gamepadList[i].id;
+					if(id.split('-').length == 3) {
+						var idsplit = id.split('-');
+						controller.vendor = idsplit[0];
+						controller.product = idsplit[1];
+						controller.name = idsplit[2];
+					} else if(id.indexOf(" Vendor: ") >= 0 && id.indexOf(" Product: ") >= 0) {
+						controller.name = id.substring(0, id.lastIndexOf("(")-1);
+						controller.vendor = id.substring(id.lastIndexOf("Vendor: ")+8, id.lastIndexOf(" Product:"));
+						controller.product = id.substring(id.lastIndexOf("Product: ")+9, id.length-1);
+					} else { controller.name = id; }
+					controller.connected = gamepadList[i].connected; controller.index = gamepadList[i].index;
+					controller.mapping = gamepadList[i].mapping; controller.timestamp = gamepadList[i].timestamp;
+					controller.buttons = []; controller.axes = [];
+					for(var n=0; n<gamepadList[i].buttons.length; n++) controller.buttons[n] = gamepadList[i].buttons[n].value;
+					for(var n=0; n<gamepadList[i].axes.length; n++) controller.axes[n] = gamepadList[i].axes[n];
+					newList.push(controller);
+				}
+			}
+			return newList;
+		}
+		</script>
+		<style>
+		body {
+			padding:10px;
+			margin:0px;
+		}
+		#topBar {
+			color:#EAEAEA;
+			background-color: #373737;
+			/* border-radius: 0px 0px 5px 5px; */
+			position:fixed;
+			text-align:center;
+			display:table;
+			left:0px;
+			top:0px;
+			width:100%;
+			padding:2px;
+			overflow:auto;
+			/* font-family:Segoe, "Helvetica", "Segoe UI", "DejaVu Sans", "Trebuchet MS", Verdana, sans-serif; */
+			font-family:"Helvetica Rounded Bold", "Khmer UI", "Helvetica Bold", "Helvetica Neue Bold", "Arial Rounded MT Bold", "Arial Bold", sans-serif;
+			font-size:12px;
+			z-index:1;
+		}
+		.barItem {
+			display:table-cell;
+			width:50%;
+		}
+		.pageItem {
+			border-style:outset;
+			border-width:medium;
+			border-radius:10px;
+			font-family:"Lucida Grande", "Lucida Sans Unicode", "Lucida Sans", "DejaVu Sans", Verdana, sans-serif;
+			font-size:18px;
+			margin:0px 0.5% 0px 0.5%;
+			text-align:center;
+		}
+		.notificationItem {
+			position:absolute;
+			left:10px;
+			right:10px;
+			width:auto;
+			background-color:#3C475F;
+			border-color:#1EDAB2;
+			color:#FAFAA5;
+		}
+		</style>
+	</head>
+	<body bgcolor="#714300">
+		<div id="topBar">
+			<span class="barItem"><input type="checkbox" id="autoScroll" checked onClick="autoScrollEnabled = this.checked;">Auto Scroll</span>
+			<span class="barItem"><input type="checkbox" id="tankMode" checked onClick="tankMode = this.checked;">Tank Drive Mode</span>
+		</div>
+		<div style="height:24px;"></div>
+		<div class="pageItem notificationItem" id="notification" hidden="true">
+			Gamepad API Not Supported
+		</div>
+		<div class="pageItem" id="msgList" style="border-color:#F1E31D">
+			<b>Recieved Messages:</b>
+		</div>
+		<script>
+		
+		var iosocket;
+		var autoScrollEnabled = true, tankMode = true;
+		var gamepadFunc = false, gamepads, joySupport = {};
+		var joyConnectTween = new TimelineLite({paused: true});
+		window.onload = initPage;
+		
+		//Value where analog controls will be considered 'on'
+		joySupport.ANALOG_THRESHOLD = 0.5;
+		
+		//Gamepad Button Names:
+		joySupport.BUTTONS = {
+			A: 0, B: 1, //Face (Main) Buttons
+			X: 2, Y: 3,
+			LEFT_BUTTON: 4, //Top Shoulder Buttons
+			RIGHT_BUTTON: 5,
+			LEFT_TRIGGER: 6, //Bottom Shoulder Buttons
+			RIGHT_TRIGGER: 7,
+			SELECT: 8, //Center Buttons
+			START: 9,
+			LEFT_STICK_BUTTON: 10, //Analog Stick Buttons
+			RIGHT_STICK_BUTTON: 11,
+			DPAD_TOP: 12, //Directional Pad
+			DPAD_BOTTOM: 13,
+			DPAD_LEFT: 14,
+			DPAD_RIGHT: 15
+		};
+		joySupport.AXES = {
+			LEFT_STICK_HORIZONTAL: 0, //Analog Sticks
+			LEFT_STICK_VERTICAL: 1,
+			RIGHT_STICK_HORIZONTAL: 2,
+			RIGHT_STICK_VERTICAL: 3
+		};
+		
+		//Firefox is Wierd:
+		if(navigator.userAgent.search("Firefox") > -1) {
+			console.log("Firefox Detected!");
+			joySupport.BUTTONS = {
+				A: 1, B: 2, //Face (Main) Buttons
+				X: 0, Y: 3,
+				LEFT_BUTTON: 4, //Top Shoulder Buttons
+				RIGHT_BUTTON: 5,
+				LEFT_TRIGGER: 6, //Bottom Shoulder Buttons
+				RIGHT_TRIGGER: 7,
+				SELECT: 8, //Center Buttons
+				START: 9,
+				LEFT_STICK_BUTTON: 10, //Analog Stick Buttons
+				RIGHT_STICK_BUTTON: 11,
+				//D-Pad Support is Broken
+			};
+			joySupport.AXES = {
+				LEFT_STICK_HORIZONTAL: 1, //Analog Sticks
+				LEFT_STICK_VERTICAL: 2,
+				RIGHT_STICK_HORIZONTAL: 3,
+				RIGHT_STICK_VERTICAL: 4
+			};
+		}
+		
+		//Gamepad Event Handlers:
+		function onPress(gamepad, button, value) {
+			//printToTerminal("["+gamepad.index+"] Button Pressed: (btn="+findValue(joySupport.BUTTONS, button)+", val="+value+")");
+			document.body.bgColor = "#000000";
+			document.getElementById("msgList").style.color = "#FFFFFF";
+		}
+		
+		function onRelease(gamepad, button, value) {
+			//printToTerminal("["+gamepad.index+"] Button Released: (btn="+findValue(joySupport.BUTTONS, button)+", val="+value+")");
+			document.body.bgColor = "#714300";
+			document.getElementById("msgList").style.color = "#000000";
+		}
+		
+		var prevThumbstickTimeout = -1;
+		
+		function onThumbstick(gamepad, axis, value) {
+			//printToTerminal("["+gamepad.index+"] Axis Moved: (axs="+findValue(joySupport.AXES, axis)+", val="+value+")");
+			iosocket.emit('gpadAxis', JSON.stringify([tankMode, findValue(joySupport.AXES, axis), value]));
+			document.body.bgColor = "#000000";
+			document.getElementById("msgList").style.color = "#FFFFFF";
+			if(prevThumbstickTimeout != -1) clearTimeout(prevThumbstickTimeout);
+			prevThumbstickTimeout = setTimeout(function() {
+				document.body.bgColor = "#714300";
+				document.getElementById("msgList").style.color = "#000000";
+				prevThumbstickTimeout = -1;
+			}, 100);
+		}
+		
+		function onConnect(gamepad) {
+			var nbar = document.getElementById("notification");
+			nbar.innerHTML = "Gamepad \""+gamepad.name+"\" Connected";
+			nbar.style.color = "#FAFAA5";
+			if(joyConnectTween.paused() || joyConnectTween.progress() > 0.8) joyConnectTween.play(0);
+			//printToTerminal("Gamepad "+gamepad.index+" Connected");
+		}
+		
+		function onDisconnect(gamepad) {
+			var nbar = document.getElementById("notification");
+			nbar.innerHTML = "Gamepad \""+gamepad.name+"\" Disonnected";
+			nbar.style.color = "#FAAFA5";
+			if(joyConnectTween.paused() || joyConnectTween.progress() > 0.8) joyConnectTween.play(0);
+			//printToTerminal("Gamepad "+gamepad.index+" Disconnected");
+		}
+		
+		//Keyboard Event Handlers:
+		function keyDown(keyEvent) {
+			if(keyEvent.keyCode >= 37 && keyEvent.keyCode <= 40) {
+				keyEvent.preventDefault();
+				document.body.bgColor = "#000000";
+				document.getElementById("msgList").style.color = "#FFFFFF";
+				var key = {}; key[0] = keyEvent.shiftKey;
+				key[1] = keyEvent.altKey; key[2] = keyEvent.ctrlKey;
+				key[3] = keyEvent.metaKey; key[4] = keyEvent.keyCode;
+				iosocket.emit('mKeyDown', JSON.stringify(key));
+			}
+		}
+		
+		function keyUp(keyEvent) {
+			if(keyEvent.keyCode >= 37 && keyEvent.keyCode <= 40) {
+				keyEvent.preventDefault();
+				document.body.bgColor = "#714300";
+				document.getElementById("msgList").style.color = "#000000";
+				var key = {}; key[0] = keyEvent.shiftKey;
+				key[1] = keyEvent.altKey; key[2] = keyEvent.ctrlKey;
+				key[3] = keyEvent.metaKey; key[4] = keyEvent.keyCode;
+				iosocket.emit('mKeyUp', JSON.stringify(key));
+			}
+		}
+		</script>
+	</body>
+</html>
