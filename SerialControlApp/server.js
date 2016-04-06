@@ -119,8 +119,8 @@ function initSocket(httpServer) {
 			var key = JSON.parse(keyRaw);
 			if(key[4] == 38 && !keyOn['U']) { keyOn['U'] = 1; keyVal['L'] = 230; keyVal['R'] = 230; writeVals(); } //Up Arrow Key
 			else if(key[4] == 40 && !keyOn['D']) { keyOn['D'] = 1; keyVal['L'] = 25; keyVal['R'] = 25; writeVals(); } //Down Arrow Key
-			else if(key[4] == 37 && !keyOn['L']) { keyOn['L'] = 1; keyVal['L'] = 200; keyVal['R'] = 55; writeVals(); } //Left Arrow Key
-			else if(key[4] == 39 && !keyOn['R']) { keyOn['R'] = 1; keyVal['L'] = 55; keyVal['R'] = 200; writeVals(); } //Right Arrow Key
+			else if(key[4] == 37 && !keyOn['L']) { keyOn['L'] = 1; keyVal['L'] = 55; keyVal['R'] = 200; writeVals(); } //Left Arrow Key
+			else if(key[4] == 39 && !keyOn['R']) { keyOn['R'] = 1; keyVal['L'] = 200; keyVal['R'] = 55; writeVals(); } //Right Arrow Key
 		});
 		socket.on('mKeyUp', function(keyRaw) {
 			var key = JSON.parse(keyRaw);

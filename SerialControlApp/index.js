@@ -1,45 +1,26 @@
-//Node.js Auto Loader v2.7, created by Bryce Peterson (Nickname: Pecacheu, Email: Pecacheu@gmail.com). Copyright 2015, All rights reserved.
+//Node.js Auto Loader v3.0, created by Bryce Peterson (Nickname: Pecacheu, Email: Pecacheu@gmail.com). Copyright 2016, All rights reserved.
 
 var os = require('os'),
 fs = require('fs'),
 dns = require('dns'),
 http = require('http'),
-spawn = require('child_process').spawn,
-exec = require('child_process').exec;
-
-var sysOS = os.platform();
+spawn = require('child_process').spawn;
+var sysOS, sysArch, sysCPU; getOS();
 
 //------------------------------------ CONFIGURATION OPTIONS ------------------------------------
 
 var debug = false; //<- Debug Mode Enable
 var deleteDir = false; //<- Delete Entire Module Directory and Reinstall if Incomplete
-var externalFiles = [
-"http://cdnjs.cloudflare.com/ajax/libs/gsap/latest/TweenLite.min.js",
-"http://cdnjs.cloudflare.com/ajax/libs/gsap/latest/TimelineLite.min.js",
-"http://cdnjs.cloudflare.com/ajax/libs/gsap/latest/plugins/CSSPlugin.min.js",
-];
 var autoInstallOptionals = true; //<- Also Install Optional Packages During Required Package Installation
-var npmInstallNames = ["socket.io", "serialport", "chalk", "node-hid"]; //<- Dependencies List
+var npmInstallNames = ["socket.io", "serialport", "chalk"]; //<- Dependencies List
 var optionalInstall = ["open"]; //<- Optional Dependencies (That's an oxymoron)
 
-//------------------------------------ END OF CONFIG OPTIONS ------------------------------------
-
-var OSReadable;
-if(sysOS == "darwin") { OSReadable = "Macintosh OS" }
-else if(sysOS == "win32") { OSReadable = "Windows" }
-else if(sysOS == "win64") { OSReadable = "Windows, 64-bit" }
-else if(sysOS == "linux") { OSReadable = "Linux" }
-var userIP = getLocalIPList()[0];
-
-console.log();
-console.log("IP Address: "+userIP);
-console.log("Operating System: "+OSReadable);
-if(debug) console.log("Warning, Debug Mode Enabled.");
-console.log();
-
-console.log("Checking for Dependencies...");
-
-var pathResolves = {
+var externalFiles = [ //Optional Site Resources (Placed under pages/resources)
+	"http://cdnjs.cloudflare.com/ajax/libs/gsap/latest/TweenLite.min.js",
+	"http://cdnjs.cloudflare.com/ajax/libs/gsap/latest/TimelineLite.min.js",
+	"http://cdnjs.cloudflare.com/ajax/libs/gsap/latest/plugins/CSSPlugin.min.js",
+];
+var pathResolves = { //Optional Sub-paths for Select File Types:
 	'.woff': "/resources/type/",
 	'.woff2': "/resources/type/",
 	'.otf': "/resources/type/",
@@ -49,10 +30,17 @@ var pathResolves = {
 	'.jpeg': "/resources/images/"
 };
 
+//------------------------------------ END OF CONFIG OPTIONS ------------------------------------
+
+var ipList = getLocalIPList();
+console.log("\nIP Address List:",ipList,"\nOperating System: "+sysOS+", "+sysArch);
+if(debug) console.log("CPU: "+sysCPU+"\n\nWarning, Debug Mode Enabled.");
+console.log("\nChecking for Dependencies...");
+
 if(verifyDepends()) {
 	//------------------------------------------ MAIN CODE ------------------------------------------
 	var chalk = require('chalk');
-	if(!userIP) { console.log(chalk.red("Error: No network connections detected!\n")); process.exit(); }
+	//if(!userIP) { console.log(chalk.red("Error: No network connections detected!\n")); process.exit(); }
 	console.log(chalk.gray("All Dependencies Found!\n"));
 	
 	var server = require("./server");
@@ -68,12 +56,12 @@ if(verifyDepends()) {
 function verifyDepends() {
 	var pathsExist = true;
 	//Node.js Modules:
-	for(var n=0, l=npmInstallNames.length; n<l; n++) {
+	for(var n=0,l=npmInstallNames.length; n<l; n++) {
 		if(!fs.existsSync(__dirname+"/node_modules/"+npmInstallNames[n])) { pathsExist = false; break; }
 	}
 	//Internal HTML Client Files:
-	for(var d=0, l=externalFiles.length; d<l; d++) {
-		var fileName = externalFiles[d].substring(externalFiles[d].lastIndexOf('/')+1);
+	for(n=0,l=externalFiles.length; n<l; n++) {
+		var fileName = externalFiles[n].substring(externalFiles[n].lastIndexOf('/')+1);
 		if(!fs.existsSync(determinePath(fileName)+fileName)) { pathsExist = false; break; }
 	}
 	return pathsExist;
@@ -128,7 +116,8 @@ function doInstall() {
 			var module = npmInstallNames[i]; i++;
 			console.log("Installing NPM Module: "+module+"\n");
 			
-			var cmd = spawn("npm", ["install", module, "--prefix", __dirname]);
+			var args = ["install", module, "--prefix", __dirname];
+			var cmd = spawn(sysOS == "Windows" ? "npm.cmd" : "npm", args);
 			cmd.stdout.pipe(process.stdout); cmd.stderr.pipe(process.stdout);
 			
 			cmd.on('close', function(code) {
@@ -151,7 +140,7 @@ function createNewFolder(path) {
 function deleteFolder(path) {
 	if(fs.existsSync(path)) { //If path exists:
 		var fileList = fs.readdirSync(path);
-		for(var t=0, l=fileList.length; t<l; t++) { 
+		for(var t=0,l=fileList.length; t<l; t++) { 
 			var currPath = path+"/"+fileList[t];
 			if(fs.lstatSync(currPath).isDirectory()) { //If directory, recurse:
 				if(debug) console.log("-- open dir "+fileList[t]);
@@ -171,20 +160,37 @@ function checkInternet(callback) {
 }
 
 function getLocalIPList() {
-	var networksList = [], ifaceList = os.networkInterfaces();
-	if(ifaceList && typeof ifaceList == "object") {
+	var netList = [], ifaceList = os.networkInterfaces();
+	if(typeof ifaceList == "object") {
 		var ifaceListKeys = Object.keys(ifaceList);
-		for(var i=0, l=ifaceListKeys.length; i<l; i++) {
+		for(var i=0,l=ifaceListKeys.length; i<l; i++) {
 			var iface = ifaceList[ifaceListKeys[i]];
-			var ifaceKeys = Object.keys(iface);
-			for(var j=0, l=ifaceKeys.length; j<l; j++) {
-				var ifItm = iface[ifaceKeys[j]];
-				if(ifItm.internal == false && ifItm.family == "IPv4" && ifItm.mac != "00:00:00:00:00:00") {
-					networksList.push(ifItm.address);
+			if(typeof iface == "object") {
+				var ifaceKeys = Object.keys(iface);
+				for(var j=0,n=ifaceKeys.length; j<n; j++) {
+					var ifItm = iface[ifaceKeys[j]];
+					if(ifItm.internal == false && ifItm.family == "IPv4" && ifItm.mac != "00:00:00:00:00:00") {
+						if(ifItm.address) netList.push(ifItm.address);
+					}
 				}
 			}
 		}
 	}
-	if(debug) console.log("\nIP Addr List:", networksList);
-	return networksList || false;
+	return netList.length ? netList : false;
+}
+
+function getOS() {
+	switch(os.platform()) {
+		case "win32": sysOS = "Windows"; break;
+		case "darwin": sysOS = "Macintosh OS"; break;
+		case "linux": sysOS = "Linux"; break;
+		default: sysOS = os.platform();
+	}
+	switch(os.arch()) {
+		case "ia32": sysArch = "32-bit"; break;
+		case "x64": sysArch = "64-bit"; break;
+		case "arm": sysArch = "ARM"; break;
+		default: sysArch = os.arch();
+	}
+	sysCPU = os.cpus()[0].model;
 }

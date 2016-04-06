@@ -7,19 +7,20 @@
 #define STATUS_LED 13
 
 //Pin Numbers:
-#define MOTOR1 2
-#define MOTOR2 3
+#define MOTORL 2
+#define MOTORR 3
 
 #define MIN_PULSE 900
 #define MAX_PULSE 2100
 
 //Globals: (Don't touch these!)
-Servo Motor1; Servo Motor2;
+Servo MotorL; Servo MotorR;
 
 void setup() {
   //Setup Pins & Motors:
   pinMode(STATUS_LED, OUTPUT);
-  Motor1.attach(MOTOR1); Motor2.attach(MOTOR2);
+  MotorL.attach(MOTORL); MotorR.attach(MOTORR);
+  driveMotor(1, 128); driveMotor(2, 128);
   //Init Serial Comm:
   Serial.begin(9600); delay(500);
 }
@@ -42,7 +43,7 @@ void loop() {
       Serial.print("], Event Type: ");
       if(msg[0] == 'K' && msg.length() == 3) { //Key Update Event:
         Serial.println("Key Update");
-        char LEFT = msg[1]; char RIGHT = msg[2];
+        byte LEFT = 255-msg[1]; byte RIGHT = msg[2];
         driveMotor(1, LEFT); driveMotor(2, RIGHT);
       } else { //Unknown Event:
         Serial.println("Unknown");
@@ -55,11 +56,9 @@ void loop() {
 }
 
 //Motor Control Functions:
-void driveMotor(unsigned int motorNum, unsigned char power) {
-  Servo SERVO;
-  if(motorNum == 1) SERVO = Motor1;
-  else if(motorNum == 2) SERVO = Motor2;
-  else return;
+void driveMotor(unsigned int motorNum, byte power) {
+  Servo SERVO; if(motorNum == 1) SERVO = MotorL;
+  else if(motorNum == 2) SERVO = MotorR; else return;
   if(power == 128) SERVO.writeMicroseconds((MAX_PULSE+MIN_PULSE)/2);
   else SERVO.writeMicroseconds(floor((double(power)/255*(MAX_PULSE-MIN_PULSE))+MIN_PULSE));
 }
