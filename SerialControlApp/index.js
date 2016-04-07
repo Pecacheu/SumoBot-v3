@@ -40,7 +40,6 @@ console.log("\nChecking for Dependencies...");
 if(verifyDepends()) {
 	//------------------------------------------ MAIN CODE ------------------------------------------
 	var chalk = require('chalk');
-	//if(!userIP) { console.log(chalk.red("Error: No network connections detected!\n")); process.exit(); }
 	console.log(chalk.gray("All Dependencies Found!\n"));
 	
 	var server = require("./server");

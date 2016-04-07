@@ -1,7 +1,7 @@
 //<legalstuff> This work is licensed under a GNU General Public License, v3.0. Visit http://gnu.org/licenses/gpl-3.0-standalone.html for details. </legalstuff>
-//Arduino code for SumoBot Jr. v2 (Stepper Version). Copyright (©) 2016, Bryce Peterson (Nickname: Pecacheu, Email: Pecacheu@gmail.com)
+//SumoBot v2 Test, created by Bryce Peterson (Nickname: Pecacheu, Email: Pecacheu@gmail.com).
 
-//avr-libc library includes:
+// avr-libc library includes:
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
@@ -9,19 +9,19 @@
 #define STATUS_LED 13
 
 //Pin Numbers:
-#define DIR_1  6
-#define STEP_1 5
-#define SLP_1  4
+#define DIR_1  8
+#define STEP_1 9
+#define SLP_1  10
 
 #define CONFIG1_M0 3
 #define CONFIG1_M1 2
 
-#define DIR_2  10
-#define STEP_2 11
-#define SLP_2  12
+#define DIR_2  5
+#define STEP_2 6
+#define SLP_2  7
 
-#define CONFIG2_M0 9
-#define CONFIG2_M1 8
+#define CONFIG2_M0 12
+#define CONFIG2_M1 11
 
 //Globals: (Don't touch these!)
 int savedStepMode = 1;
@@ -46,8 +46,7 @@ void setup() {
   pinMode(CONFIG2_M0, OUTPUT);
   pinMode(CONFIG2_M1, OUTPUT);
   setStepMode(1); //Set Drivers to Full-Step Mode
-  //Init Serial Comm:
-  Serial.begin(9600); delay(500);
+  
   //Setup Timer1:
   int timerScale = 1024; int clockSpeed_MHz = 16; int miliSeconds = 1;
   cli(); //Disable Global Interrupts
@@ -60,54 +59,48 @@ void setup() {
   TCCR1B |= (1 << WGM12); //Turn on CTC Mode
   TIMSK1 |= (1 << OCIE1A); //Enable Timer Compare Interrupt
   sei(); //Enable Global Interrupts
+  
+  //TEMP SERIAL TEST CODE:
+  /*Serial.begin(9600);
+  delay(500);
+  Serial.println("HELLO!");
+  Serial.print("10 ^ 3 = "); Serial.println(pow(10, 3));
+  Serial.print(clockSpeed_MHz); Serial.print(" * 10 ^ 3 = "); Serial.println(clockSpeed_MHz*pow(10, 3));
+  Serial.print(clockSpeed_MHz*pow(10, 3)); Serial.print(" / "); Serial.print(timerScale); Serial.print(" = "); Serial.println(clockPeriod);
+  Serial.print("("); Serial.print(miliSeconds); Serial.print(" * "); Serial.print(clockPeriod); Serial.print(") - 1 = "); Serial.println(timerCounts);*/
 }
 
 void loop() {
-  String msg = ""; boolean msgDone = false;
+  int count = 1;
+  boolean dir = true;
   while(1) {
-    //Read New Commands From Serial:
-    while(Serial.available() > 0) {
-      char newChar = Serial.read();
-      //Serial.print((unsigned char)newChar); Serial.print(" = '"); Serial.write(newChar); Serial.println("'"); //<< DEBUG
-      if(newChar == '\n') { msgDone = true; break; }
-      else msg += newChar;
-    }
-    
-    //Process Next Command:
-    if(msgDone && msg.length() >= 1) {
-      Serial.print("Data: [");
-      for(int i=0; i<msg.length(); i++) { if(i > 0) Serial.print(", "); Serial.print((unsigned char)msg[i]); }
-      Serial.print("], Event Type: ");
-      if(msg[0] == 'K' && msg.length() == 3) { //Key Update Event:
-        Serial.println("Key Update");
-        char LEFT = msg[1]; char RIGHT = msg[2];
-        if(LEFT == 0) {
-          driveMotor(2, false, 1, false);
-        } else if(LEFT > 0) {
-          driveMotor(2, true, -(abs(LEFT)*2)+256, false);
-        } else {
-          driveMotor(2, true, -(abs(LEFT)*2)+256, true);
-        }
-        if(RIGHT == 0) {
-          driveMotor(1, false, 1, false);
-        } else if(RIGHT > 0) {
-          driveMotor(1, true, -(abs(RIGHT)*2)+256, true);
-        } else {
-          driveMotor(1, true, -(abs(RIGHT)*2)+256, false);
-        }
-      } else { //Unknown Event:
-        Serial.println("Unknown");
-      }
-    }
-    
-    //Clear Processed Message Data:
-    if(msgDone) { msg = ""; msgDone = false; }
-  }
-}
+    stepMotor(count%2==0 ? 1 : 2, 10, dir);
+    digitalWrite(STATUS_LED, HIGH); delay(50);
+    digitalWrite(STATUS_LED,  LOW); delay(50);
 
-//An Exclusive-Or Function:
-boolean XOR(boolean a, boolean b) {
-  return a != b;
+//    driveMotor(1, true, 255, dir);
+//    driveMotor(2, true, 255, dir);
+//    for(int c=0; c<5; c++) {
+//      digitalWrite(STATUS_LED, HIGH); delay(500);
+//      digitalWrite(STATUS_LED,  LOW); delay(500);
+//    }
+//    driveMotor(1, false, 1, dir);
+//    driveMotor(2, false, 1, dir);
+    
+    delay(500);
+    
+    if(count >= 10) {
+      dir = !dir;
+      count = 0;
+      disengageMotor(1);
+      disengageMotor(2);
+      delay(2500);
+      engageMotor(1);
+      engageMotor(2);
+      delay(500);
+    }
+    count++;
+  }
 }
 
 //Motor Control Functions:
