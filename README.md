@@ -1,4 +1,4 @@
-# SumoBot 2.0
+# SumoBot 3.0
 Everything you need to build a SumoBot!
 
 ## Links:
