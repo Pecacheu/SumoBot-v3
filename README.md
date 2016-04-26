@@ -18,14 +18,14 @@ Open Terminal, enter **sudo nvram boot-args="kext-dev-mode=1"**, and hit return.
 2. Squeeze black rubber spacers into upper 2 side slots on servo casing.
 3. Insert servos into servo holes in side pieces, ensuring that they face in opposite directions.
 4. Use 2 silver screws each to secure servos onto side pieces. Add rubber bands to wheels.
-6. Attach wheels using 2 silver screws with black spacers (or silver spacers) each.
+6. Attach wheels using 2 silver screws with black rubber spacers (or metal silver spacers) each.
 
 #### Bottom Piece:
 6. Screw caster wheel onto bottom piece using remaining 2 black screws. Ensure it's on the opposite side of the piece from the arrow.
 
 #### Chassis Assembly:
-7. Insert top and bottom pieces into one of the side pieces, ensuring that all arrows face the same direction, and are on the top (for top and bottom pieces) or inner (for side pieces) side of each piece.
-8. Add other side piece to the assembly. It's arrow should also face inwards.
+7. Insert top and bottom pieces into one of the side pieces, ensuring that all arrows point towards the front of the robot, and are on the topside (for top and bottom pieces) or inner (for side pieces) face.
+8. Add the other side piece to the assembly. It's arrow should also face inwards.
 9. Screw Arduino onto top piece using final 2 silver screws. The front left and back right holes will work best with most Arduino boards.
 
 #### Wiring:
